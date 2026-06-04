@@ -367,8 +367,10 @@
 
     /* ---- Cell content ---- */
     .col-label { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
-    .drop-ts { font-size: 12px; font-weight: 600; color: var(--text); }
+    .drop-ts { font-size: 12px; font-weight: 600; color: var(--text); display: flex; align-items: baseline; gap: 6px; }
     .drop-ts.newest-ts { color: var(--accent); font-weight: 700; }
+    .drop-date { font-size: 10px; font-weight: 500; color: var(--muted); letter-spacing: 0; }
+    .drop-ts.newest-ts .drop-date { color: var(--muted); }
     .drop-total-line { font-size: 10px; font-weight: 500; color: var(--muted); }
     .rep-bar { height: 2px; background: var(--border2); border-radius: 1px; margin-top: 4px; overflow: hidden; }
     .rep-bar-fill { height: 100%; background: var(--accent); border-radius: 1px; opacity: 0.5; }
@@ -520,6 +522,11 @@
     if (!ts) return '—';
     const d = new Date(ts);
     return d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true});
+  }
+  function fmtDate(ts) {
+    if (!ts) return '';
+    const d = new Date(ts);
+    return (d.getMonth() + 1) + '/' + d.getDate();
   }
 
   // ---------------------------------------------------------------------------
@@ -1115,7 +1122,7 @@
 
       headRow.appendChild(makeCell(
         ['cell-head', isNewest ? 'cell-newest' : ''],
-        `<span class="drop-ts ${isNewest ? 'newest-ts' : ''}">${isNewest ? '▶ ' : ''}${fmtTs(drop.batch_ts)}</span>
+        `<span class="drop-ts ${isNewest ? 'newest-ts' : ''}">${isNewest ? '▶ ' : ''}${fmtTs(drop.batch_ts)}<span class="drop-date">${fmtDate(drop.batch_ts)}</span></span>
          <span class="drop-total-line">${fmt(drop.drop_total)} votes</span>
          <span class="drop-total-line">${newStr}${pctOfCur ? ' · ' + pctOfCur : ''}</span>
          ${mergedTag}
