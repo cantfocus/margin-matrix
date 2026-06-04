@@ -5,25 +5,26 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Margin Matrix</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@500;600;700;800&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
+      /* Dark theme (default) */
       --bg:       #0d0f0e;
       --surface:  #151817;
       --surface2: #1c1f1e;
-      --border:   rgba(255,255,255,0.07);
-      --border2:  rgba(255,255,255,0.13);
-      --text:     #e8ebe9;
-      --muted:    #7a8480;
-      --dim:      #4a504d;
+      --border:   rgba(255,255,255,0.08);
+      --border2:  rgba(255,255,255,0.16);
+      --text:     #f1f4f2;
+      --muted:    #9ba6a1;
+      --dim:      #5a625e;
       --accent:   #c8f060;
-      --dem:      #5b9cf6;
-      --rep:      #f4725a;
-      --lib:      #f0b429;
-      --npd:      #a78bfa;
-      --other:    #6b7280;
+      --dem:      #6aa8ff;
+      --rep:      #ff7e64;
+      --lib:      #f5c043;
+      --npd:      #b495ff;
+      --other:    #8a929a;
       --col-name: 200px;
       --col-drop: 170px;
       --sidebar-w: 260px;
@@ -33,13 +34,32 @@
       --font-mono: 'DM Mono', monospace;
     }
 
+    [data-theme="light"] {
+      --bg:       #f8f7f3;
+      --surface:  #ffffff;
+      --surface2: #efece5;
+      --border:   rgba(0,0,0,0.08);
+      --border2:  rgba(0,0,0,0.16);
+      --text:     #1a1d1c;
+      --muted:    #555c58;
+      --dim:      #8a8f8c;
+      --accent:   #4a8a00;
+      --dem:      #1f6feb;
+      --rep:      #c9341a;
+      --lib:      #b07a00;
+      --npd:      #6d44d9;
+      --other:    #555c58;
+    }
+
     body {
       background: var(--bg);
       color: var(--text);
       font-family: var(--font-mono);
       font-size: 13px;
+      font-weight: 500;
       line-height: 1.5;
       min-height: 100vh;
+      transition: background 0.2s, color 0.2s;
     }
 
     /* ---- Header ---- */
@@ -57,6 +77,38 @@
     }
     .logo { font-family: var(--font-head); font-size: 18px; font-weight: 700; letter-spacing: -0.02em; color: var(--accent); }
     .logo span { color: var(--muted); font-weight: 400; }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .header-meta {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .theme-toggle {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 15px;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.15s;
+    }
+    .theme-toggle:hover {
+      color: var(--accent);
+      border-color: var(--accent);
+      transform: rotate(-15deg);
+    }
 
     /* ---- Toolbar ---- */
     .toolbar {
@@ -115,7 +167,7 @@
     input[type="text"]::placeholder { color: var(--dim); }
     input[type="number"] { width: 72px; }
 
-    .toolbar-label { font-size: 11px; color: var(--dim); white-space: nowrap; }
+    .toolbar-label { font-size: 11px; font-weight: 600; color: var(--muted); white-space: nowrap; letter-spacing: 0.04em; text-transform: uppercase; }
     .last-updated { margin-left: auto; font-size: 11px; color: var(--dim); }
 
     /* ---- Page body: content + sidebar ---- */
@@ -181,15 +233,16 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 6px 12px;
-      font-size: 10px;
+      padding: 8px 12px;
+      font-size: 11px;
+      font-weight: 700;
       letter-spacing: 0.08em;
       text-transform: uppercase;
-      color: var(--dim);
+      color: var(--muted);
       cursor: pointer;
       user-select: none;
     }
-    .sidebar-section-head:hover { color: var(--muted); }
+    .sidebar-section-head:hover { color: var(--text); }
     .sidebar-chevron { font-size: 10px; transition: transform 0.15s; }
     .sidebar-section.closed .sidebar-chevron { transform: rotate(-90deg); }
     .sidebar-section.closed .sidebar-items { display: none; }
@@ -211,8 +264,8 @@
     }
     .sidebar-item:hover { background: var(--surface2); }
     .sidebar-item input[type="checkbox"] { accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
-    .sidebar-item-label { font-size: 11px; color: var(--muted); line-height: 1.3; }
-    .sidebar-item.checked .sidebar-item-label { color: var(--text); }
+    .sidebar-item-label { font-size: 12px; font-weight: 500; color: var(--muted); line-height: 1.3; }
+    .sidebar-item.checked .sidebar-item-label { color: var(--text); font-weight: 600; }
 
     .sidebar-actions {
       display: flex;
@@ -273,8 +326,8 @@
       display: flex; align-items: center; justify-content: space-between;
       padding: 10px 14px; background: var(--surface2); border-bottom: 1px solid var(--border);
     }
-    .race-name { font-family: var(--font-head); font-size: 14px; font-weight: 700; color: var(--text); letter-spacing: -0.01em; }
-    .race-meta { font-size: 11px; color: var(--muted); }
+    .race-name { font-family: var(--font-head); font-size: 15px; font-weight: 800; color: var(--text); letter-spacing: -0.01em; }
+    .race-meta { font-size: 11px; font-weight: 500; color: var(--muted); }
 
     /* ---- Row-based grid table ---- */
     .race-table-wrap { overflow-x: auto; }
@@ -313,10 +366,10 @@
     .race-table .table-row:last-child > .cell { border-bottom: none; }
 
     /* ---- Cell content ---- */
-    .col-label { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--dim); }
-    .drop-ts { font-size: 11px; font-weight: 500; color: var(--text); }
-    .drop-ts.newest-ts { color: var(--accent); }
-    .drop-total-line { font-size: 10px; color: var(--muted); }
+    .col-label { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+    .drop-ts { font-size: 12px; font-weight: 600; color: var(--text); }
+    .drop-ts.newest-ts { color: var(--accent); font-weight: 700; }
+    .drop-total-line { font-size: 10px; font-weight: 500; color: var(--muted); }
     .rep-bar { height: 2px; background: var(--border2); border-radius: 1px; margin-top: 4px; overflow: hidden; }
     .rep-bar-fill { height: 100%; background: var(--accent); border-radius: 1px; opacity: 0.5; }
     .bucket-tag {
@@ -332,8 +385,8 @@
       margin-top: 2px;
     }
 
-    .cand-name-text { font-size: 12px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .cand-party-badge { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 3px; font-weight: 500; width: fit-content; }
+    .cand-name-text { font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .cand-party-badge { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 3px; font-weight: 600; width: fit-content; }
     .party-Dem  { background: rgba(91,156,246,0.15);  color: var(--dem); }
     .party-Rep  { background: rgba(244,114,90,0.15);  color: var(--rep); }
     .party-Lib  { background: rgba(240,180,41,0.15);  color: var(--lib); }
@@ -348,12 +401,12 @@
     .hide-btn:hover { color: var(--muted); }
 
     .pct-line { display: flex; align-items: baseline; gap: 6px; }
-    .pct-big { font-size: 15px; font-weight: 500; color: var(--text); letter-spacing: -0.02em; }
-    .votes-sub { font-size: 11px; color: var(--muted); }
+    .pct-big { font-size: 16px; font-weight: 600; color: var(--text); letter-spacing: -0.02em; }
+    .votes-sub { font-size: 11px; font-weight: 500; color: var(--muted); }
     .pct-bar { height: 2px; background: var(--border2); border-radius: 1px; margin: 3px 0; overflow: hidden; }
     .pct-bar-fill { height: 100%; border-radius: 1px; }
-    .new-line { font-size: 10px; color: var(--dim); margin-top: 1px; }
-    .delta-inline { font-size: 11px; font-weight: 500; }
+    .new-line { font-size: 10px; font-weight: 500; color: var(--dim); margin-top: 1px; }
+    .delta-inline { font-size: 11px; font-weight: 600; }
     .delta-inline.pos { color: var(--accent); }
     .delta-inline.neg { color: var(--rep); }
 
@@ -364,7 +417,12 @@
 
 <header>
   <div class="logo">margin<span>_</span>matrix</div>
-  <div style="font-size:11px; color:var(--dim);">2026 CA Primary · Local</div>
+  <div class="header-right">
+    <button id="theme-toggle" class="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark mode" aria-label="Toggle theme">
+      <span id="theme-icon">☾</span>
+    </button>
+    <span class="header-meta">2026 CA Primary</span>
+  </div>
 </header>
 
 <div class="toolbar">
@@ -410,6 +468,28 @@
   // the static site. In static mode, fetches go to pre-baked JSON files
   // instead of Flask API endpoints, and the auto-refresh is disabled.
   const STATIC_MODE = true;
+
+  // ---------------------------------------------------------------------------
+  // Theme: persists in localStorage, defaults to dark.
+  // Static mode + GitHub Pages keep localStorage per-origin so this works
+  // identically on the deployed site.
+  // ---------------------------------------------------------------------------
+  function applyTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    const icon = document.getElementById('theme-icon');
+    if (icon) icon.textContent = theme === 'light' ? '☀' : '☾';
+  }
+  function toggleTheme() {
+    const cur = document.documentElement.getAttribute('data-theme') || 'dark';
+    const next = cur === 'light' ? 'dark' : 'light';
+    try { localStorage.setItem('mm_theme', next); } catch (e) {}
+    applyTheme(next);
+  }
+  (function initTheme() {
+    let saved = 'dark';
+    try { saved = localStorage.getItem('mm_theme') || 'dark'; } catch (e) {}
+    applyTheme(saved);
+  })();
 
   const state = {
     source: 'la_county',
