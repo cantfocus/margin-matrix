@@ -402,19 +402,6 @@
     }
     .hide-btn:hover { color: var(--muted); }
 
-    .race-copy-link {
-      font-size: 10px; color: var(--dim); cursor: pointer; border: none;
-      background: none; padding: 2px 6px; font-family: var(--font-mono);
-      text-decoration: underline; text-underline-offset: 2px; border-radius: 4px;
-    }
-    .race-copy-link:hover { color: var(--accent); }
-
-    .cand-other { font-style: italic; }
-    .cand-other .cand-name-text { color: var(--muted); font-size: 12px; }
-    .cand-other .pct-big { color: var(--muted); font-size: 14px; }
-    .cand-other .votes-sub,
-    .cand-other .new-line { color: var(--dim); }
-
     .pct-line { display: flex; align-items: baseline; gap: 6px; }
     .pct-big { font-size: 16px; font-weight: 600; color: var(--text); letter-spacing: -0.02em; }
     .votes-sub { font-size: 11px; font-weight: 500; color: var(--muted); }
@@ -436,7 +423,7 @@
     <button id="theme-toggle" class="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark mode" aria-label="Toggle theme">
       <span id="theme-icon">☾</span>
     </button>
-    <span class="header-meta">2026 CA Primary</span>
+    <span class="header-meta" id="header-meta">2026 CA Primary</span>
   </div>
 </header>
 
@@ -457,8 +444,6 @@
     <option value="30">30 min</option>
     <option value="60">1 hour</option>
     <option value="120">2 hours</option>
-    <option value="720">12 hours</option>
-    <option value="1440">1 day</option>
   </select>
   <span class="last-updated" id="last-updated">—</span>
 </div>
@@ -486,6 +471,10 @@
   // instead of Flask API endpoints, and the auto-refresh is disabled.
   const STATIC_MODE = true;
 
+  // BUILD_VERSION is replaced by build_static.py to bust browser caches
+  // on every new build. Empty string in dev mode.
+  const BUILD_VERSION = "20260606-182507";
+
   // ---------------------------------------------------------------------------
   // Theme: persists in localStorage, defaults to dark.
   // Static mode + GitHub Pages keep localStorage per-origin so this works
@@ -507,6 +496,13 @@
     try { saved = localStorage.getItem('mm_theme') || 'dark'; } catch (e) {}
     applyTheme(saved);
   })();
+
+  // Show the build version (truncated) in the header in static mode so
+  // you can verify which build the browser is showing.
+  if (STATIC_MODE && BUILD_VERSION) {
+    const el = document.getElementById('header-meta');
+    if (el) el.textContent = '2026 CA Primary · build ' + BUILD_VERSION;
+  }
 
   const state = {
     source: 'la_county',
@@ -719,26 +715,20 @@
   }
 
   // ---- Load offices, build sidebar ----
-  async function loadOffices(preselect) {
+  async function loadOffices() {
     const url = STATIC_MODE
-      ? `api/offices_${state.source}.json`
+      ? `api/offices_${state.source}.json?v=${BUILD_VERSION}`
       : `/api/offices?source=${state.source}`;
     const res = await fetch(url);
     state.races = await res.json();
     state.raceData = {};
-    state.sidebarFilter = '';
 
-    if (preselect && preselect.size > 0) {
-      const validIds = new Set(state.races.map(r => r.contest_id));
-      state.visibleRaces = new Set([...preselect].filter(id => validIds.has(id)));
-    } else {
-      // Default: nothing selected — user picks which races to view from sidebar
-      state.visibleRaces = new Set();
-    }
+    // Default: nothing selected — user picks which races to view from sidebar
+    state.visibleRaces = new Set();
+    state.sidebarFilter = '';
 
     buildSidebar();
     renderAll();
-    updateHash();
   }
 
   // ---- Sidebar ----
@@ -869,7 +859,6 @@
       else         state.visibleRaces.delete(r.contest_id);
     });
     buildSidebar();
-    updateHash();
     renderAll();
   }
 
@@ -900,7 +889,6 @@
         ? `${filtered.length} of ${total} shown · ${selected} selected`
         : `${total} races · ${selected} selected`;
     }
-    updateHash();
     renderAll();
   }
 
@@ -919,45 +907,7 @@
         ? `${filtered.length} of ${total} shown · ${selected} selected`
         : `${total} races · ${selected} selected`;
     }
-    updateHash();
     renderAll();
-  }
-
-  // ---- URL hash: encode/decode visible races so a selection can be shared ----
-  function updateHash() {
-    const params = new URLSearchParams();
-    params.set('source', state.source);
-    if (state.visibleRaces.size > 0) {
-      params.set('races', [...state.visibleRaces].sort((a, b) => a - b).join(','));
-    }
-    if (state.pctThreshold > 0) {
-      params.set('minpct', state.pctThreshold);
-    }
-    history.replaceState(null, '', '#' + params.toString());
-  }
-
-  function copyRaceLink(contestId, btn) {
-    const params = new URLSearchParams();
-    params.set('source', state.source);
-    params.set('races', contestId);
-    const url = location.origin + location.pathname + '#' + params.toString();
-    const orig = btn.textContent;
-    navigator.clipboard.writeText(url).then(() => {
-      btn.textContent = 'copied!';
-      setTimeout(() => { btn.textContent = orig; }, 1500);
-    }).catch(() => {
-      // Fallback for non-HTTPS environments
-      const tmp = document.createElement('textarea');
-      tmp.value = url;
-      tmp.style.position = 'fixed';
-      tmp.style.opacity = '0';
-      document.body.appendChild(tmp);
-      tmp.select();
-      document.execCommand('copy');
-      document.body.removeChild(tmp);
-      btn.textContent = 'copied!';
-      setTimeout(() => { btn.textContent = orig; }, 1500);
-    });
   }
 
   // ---- Filters ----
@@ -965,7 +915,6 @@
     state.candSearch   = document.getElementById('cand-search').value.toLowerCase().trim();
     state.pctThreshold = parseFloat(document.getElementById('pct-threshold').value) || 0;
     state.bucketMinutes = parseInt(document.getElementById('bucket-size').value) || 0;
-    updateHash();
     renderAll();
   }
 
@@ -973,7 +922,7 @@
   async function ensureRaceData(contestId) {
     if (state.raceData[contestId]) return;
     const url = STATIC_MODE
-      ? `api/race/${contestId}.json`
+      ? `api/race/${contestId}.json?v=${BUILD_VERSION}`
       : `/api/race/${contestId}`;
     const res = await fetch(url);
     state.raceData[contestId] = await res.json();
@@ -1035,17 +984,9 @@
     const groups = []; // [{ key, drops: [...oldest→newest within group] }]
     let curKey = null;
 
-    // Align bucket boundaries to local midnight so that e.g. "1 day" produces
-    // one bucket per calendar day regardless of timezone offset.
-    function localBucketKey(ts) {
-      const d = new Date(ts);
-      const midnight = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-      return midnight + Math.floor((ts - midnight) / bucketMs) * bucketMs;
-    }
-
     oldestFirst.forEach(d => {
       const t   = new Date(d.batch_ts).getTime();
-      const key = localBucketKey(t);
+      const key = Math.floor(t / bucketMs) * bucketMs;
       if (curKey === null || key !== curKey) {
         groups.push({ key, drops: [] });
         curKey = key;
@@ -1126,7 +1067,7 @@
 
     const hdr = document.createElement('div');
     hdr.className = 'race-card-header';
-    hdr.innerHTML = `<span class="race-name">${nameStr}</span><div style="display:flex;align-items:center;gap:10px"><button class="race-copy-link" onclick="copyRaceLink(${race.contest_id},this)" title="Copy a link to this race">link</button><span class="race-meta">${metaStr}</span></div>`;
+    hdr.innerHTML = `<span class="race-name">${nameStr}</span><span class="race-meta">${metaStr}</span>`;
     card.appendChild(hdr);
 
     if (!drops.length) {
@@ -1148,14 +1089,12 @@
       );
     }
 
-    // Apply pct threshold filter — keep the filtered-out ones for the "Other" row
-    let otherCandidates = [];
+    // Apply pct threshold filter
     if (state.pctThreshold > 0) {
-      otherCandidates = candidates.filter(c => c.vote_pct < state.pctThreshold);
-      candidates      = candidates.filter(c => c.vote_pct >= state.pctThreshold);
+      candidates = candidates.filter(c => c.vote_pct >= state.pctThreshold);
     }
 
-    if (!candidates.length && !otherCandidates.length) {
+    if (!candidates.length) {
       card.innerHTML += '<div class="empty-msg">No candidates match current filters.</div>';
       return card;
     }
@@ -1259,53 +1198,6 @@
       table.appendChild(row);
     });
 
-    // ---- "Other candidates" aggregated row (pct threshold grouping) ----
-    if (otherCandidates.length > 0) {
-      const otherIds = new Set(otherCandidates.map(c => c.candidate_id));
-      const row = document.createElement('div');
-      row.className = 'table-row cand-other';
-
-      row.appendChild(makeCell(['cell-name'],
-        `<span class="cand-name-text">Other candidates (${otherCandidates.length})</span>`
-      ));
-
-      drops.forEach((drop, i) => {
-        const isNewest = i === 0;
-        const dcs = drop.candidates.filter(x => otherIds.has(x.candidate_id));
-        let inner = '';
-        if (!dcs.length) {
-          inner = `<span class="pct-big">—</span>`;
-        } else {
-          const votes     = dcs.reduce((s, x) => s + (x.votes     || 0), 0);
-          const vote_pct  = dcs.reduce((s, x) => s + (x.vote_pct  || 0), 0);
-          const new_votes = dcs.reduce((s, x) => s + (x.new_votes || 0), 0);
-          const new_pct   = dcs.reduce((s, x) => s + (x.new_votes_pct || 0), 0);
-          const pct_delta = dcs.reduce((s, x) => s + (x.pct_delta || 0), 0);
-          const isFirst   = dcs.every(x => x.is_first_drop);
-          const pctW      = Math.min(vote_pct, 100).toFixed(1);
-
-          let deltaInline = '';
-          if (!isFirst && pct_delta !== 0) {
-            const sign   = pct_delta > 0 ? '+' : '';
-            const dClass = pct_delta > 0 ? 'pos' : 'neg';
-            deltaInline = `<span class="delta-inline ${dClass}">${sign}${pct_delta.toFixed(1)}%</span>`;
-          }
-          const newLine = isFirst
-            ? `<span class="new-line">initial drop</span>`
-            : `<span class="new-line">+${fmt(new_votes)} new (${fmtPct(new_pct)})</span>`;
-
-          inner = `
-            <span class="pct-line"><span class="pct-big">${fmtPct(vote_pct)}</span>${deltaInline}</span>
-            <span class="votes-sub">${fmt(votes)} votes</span>
-            <div class="pct-bar"><div class="pct-bar-fill" style="width:${pctW}%;background:var(--muted)"></div></div>
-            ${newLine}`;
-        }
-        row.appendChild(makeCell([isNewest ? 'cell-newest' : ''], inner));
-      });
-
-      table.appendChild(row);
-    }
-
     wrap.appendChild(table);
     card.appendChild(wrap);
     return card;
@@ -1335,35 +1227,9 @@
     setInterval(() => { state.raceData = {}; renderAll(); }, 60_000);
   }
 
-  // Init — restore state from URL hash if present
+  // Init
   updateJumpBtn();
-  let _preselect = null;
-  (function initFromHash() {
-    const hash = window.location.hash.slice(1);
-    if (!hash) return;
-    const params = new URLSearchParams(hash);
-    const src = params.get('source');
-    if (src === 'statewide' || src === 'la_county') {
-      state.source = src;
-      document.querySelectorAll('.source-toggle button').forEach(b => {
-        const isMatch = (src === 'statewide' && b.textContent.trim() === 'Statewide') ||
-                        (src === 'la_county'  && b.textContent.trim() === 'LA County');
-        b.classList.toggle('active', isMatch);
-      });
-      updateJumpBtn();
-    }
-    const racesParam = params.get('races');
-    if (racesParam) {
-      _preselect = new Set(racesParam.split(',').map(Number).filter(n => n > 0));
-    }
-    const minPct = parseFloat(params.get('minpct'));
-    if (minPct > 0) {
-      state.pctThreshold = minPct;
-      const inp = document.getElementById('pct-threshold');
-      if (inp) inp.value = minPct;
-    }
-  })();
-  loadOffices(_preselect);
+  loadOffices();
 </script>
 </body>
 </html>
