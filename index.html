@@ -436,7 +436,7 @@
     <button id="theme-toggle" class="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark mode" aria-label="Toggle theme">
       <span id="theme-icon">☾</span>
     </button>
-    <span class="header-meta" id="header-meta">2026 CA Primary</span>
+    <span class="header-meta" id="header-meta">2026 CA General</span>
   </div>
 </header>
 
@@ -488,7 +488,7 @@
 
   // BUILD_VERSION is replaced by build_static.py to bust browser caches
   // on every new build. Empty string in dev mode.
-  const BUILD_VERSION = "20260704-173306";
+  const BUILD_VERSION = "20261102-220159";
 
   // ---------------------------------------------------------------------------
   // Theme: persists in localStorage, defaults to dark.
@@ -516,7 +516,7 @@
   // you can verify which build the browser is showing.
   if (STATIC_MODE && BUILD_VERSION) {
     const el = document.getElementById('header-meta');
-    if (el) el.textContent = '2026 CA Primary · build ' + BUILD_VERSION;
+    if (el) el.textContent = '2026 CA General · build ' + BUILD_VERSION;
   }
 
   const state = {
