@@ -488,7 +488,7 @@
 
   // BUILD_VERSION is replaced by build_static.py to bust browser caches
   // on every new build. Empty string in dev mode.
-  const BUILD_VERSION = "20261102-220159";
+  const BUILD_VERSION = "20261103-171733";
 
   // ---------------------------------------------------------------------------
   // Theme: persists in localStorage, defaults to dark.
@@ -795,7 +795,10 @@
 
     Object.keys(groups).sort().forEach(groupName => {
       const entries = groups[groupName];
-      const isOpen  = state.sidebarOpen[groupName] !== false;
+      // Collapsed by default; auto-expand while filtering. An explicit
+      // open/close by the user always wins.
+      const userChoice = state.sidebarOpen[groupName];
+      const isOpen  = userChoice !== undefined ? userChoice : !!filterStr;
 
       const section = document.createElement('div');
       section.className = 'sidebar-section' + (isOpen ? '' : ' closed');
