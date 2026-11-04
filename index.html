@@ -329,6 +329,31 @@
     .race-name { font-family: var(--font-head); font-size: 15px; font-weight: 800; color: var(--text); letter-spacing: -0.01em; }
     .race-meta { font-size: 11px; font-weight: 500; color: var(--muted); }
 
+    /* ---- Display order controls (number, arrows, drag grip) ---- */
+    .race-title { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .race-order { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
+    .order-grip {
+      cursor: grab; color: var(--dim); font-size: 14px; padding: 0 4px;
+      user-select: none; line-height: 1;
+    }
+    .order-grip:hover { color: var(--accent); }
+    .order-grip:active { cursor: grabbing; }
+    input.order-num {
+      width: 34px; padding: 2px 4px; font-size: 11px; text-align: center;
+      font-family: var(--font-mono); -moz-appearance: textfield;
+    }
+    input.order-num::-webkit-outer-spin-button,
+    input.order-num::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    .order-btn {
+      border: none; background: none; color: var(--dim); cursor: pointer;
+      font-size: 9px; padding: 3px 4px; border-radius: 3px; line-height: 1;
+    }
+    .order-btn:hover:not(:disabled) { color: var(--accent); background: var(--border); }
+    .order-btn:disabled { opacity: 0.25; cursor: default; }
+    .race-card.dragging { opacity: 0.4; }
+    .race-card.drop-before { box-shadow: 0 -3px 0 0 var(--accent); }
+    .race-card.drop-after  { box-shadow: 0 3px 0 0 var(--accent); }
+
     /* ---- Row-based grid table ---- */
     .race-table-wrap { overflow-x: auto; }
     .race-table-wrap::-webkit-scrollbar { height: 4px; }
@@ -488,7 +513,7 @@
 
   // BUILD_VERSION is replaced by build_static.py to bust browser caches
   // on every new build. Empty string in dev mode.
-  const BUILD_VERSION = "20261103-171733";
+  const BUILD_VERSION = "20261103-182942";
 
   // ---------------------------------------------------------------------------
   // Theme: persists in localStorage, defaults to dark.
@@ -942,7 +967,8 @@
     const params = new URLSearchParams();
     params.set('source', state.source);
     if (state.visibleRaces.size > 0) {
-      params.set('races', [...state.visibleRaces].sort((a, b) => a - b).join(','));
+      // Unsorted: visibleRaces' insertion order IS the display order
+      params.set('races', [...state.visibleRaces].join(','));
     }
     if (state.pctThreshold > 0) {
       params.set('minpct', state.pctThreshold);
@@ -995,7 +1021,8 @@
   // ---- Render ----
   async function renderAll() {
     const main  = document.getElementById('main-content');
-    const races = state.races.filter(r => state.visibleRaces.has(r.contest_id));
+    const byId  = new Map(state.races.map(r => [r.contest_id, r]));
+    const races = [...state.visibleRaces].map(id => byId.get(id)).filter(Boolean);
 
     if (!races.length) {
       main.innerHTML = '<div class="empty-msg">No races selected. Use the sidebar to pick races.</div>';
@@ -1020,6 +1047,105 @@
       const data = state.raceData[r.contest_id];
       if (data) main.appendChild(buildRaceCard(r, data));
     });
+    refreshOrderControls();
+  }
+
+  // ---- Display order ----
+  // state.visibleRaces is a Set, whose insertion order is the display order.
+  // Newly checked races land at the end; these helpers rearrange it, then
+  // shuffle the existing card elements rather than re-rendering everything.
+  function moveRace(contestId, newIndex) {
+    const order = [...state.visibleRaces];
+    const from  = order.indexOf(contestId);
+    if (from === -1) return;
+    newIndex = Math.max(0, Math.min(order.length - 1, newIndex));
+    if (newIndex === from) { refreshOrderControls(); return; }
+    order.splice(from, 1);
+    order.splice(newIndex, 0, contestId);
+    state.visibleRaces = new Set(order);
+    updateHash();
+
+    const main = document.getElementById('main-content');
+    order.forEach(id => {
+      const card = main.querySelector(`.race-card[data-contest-id="${id}"]`);
+      if (card) main.appendChild(card);
+    });
+    refreshOrderControls();
+  }
+
+  function moveRaceBy(contestId, delta) {
+    moveRace(contestId, [...state.visibleRaces].indexOf(contestId) + delta);
+  }
+
+  function onOrderInput(contestId, input) {
+    const n = parseInt(input.value, 10);
+    if (Number.isFinite(n)) moveRace(contestId, n - 1);
+    else refreshOrderControls();
+  }
+
+  // Sync each card's position number and arrow enabled-state with its slot
+  function refreshOrderControls() {
+    const cards = document.querySelectorAll('#main-content .race-card');
+    cards.forEach((card, i) => {
+      const num = card.querySelector('.order-num');
+      if (num) { num.value = i + 1; num.max = cards.length; }
+      const up   = card.querySelector('.order-up');
+      const down = card.querySelector('.order-down');
+      if (up)   up.disabled   = i === 0;
+      if (down) down.disabled = i === cards.length - 1;
+    });
+  }
+
+  // ---- Drag and drop (desktop; touch devices use the arrows) ----
+  // Cards are only draggable while the grip is held, so text selection and
+  // horizontal scrolling inside the table keep working.
+  let dragId = null;
+
+  function setupCardDrag(card) {
+    const grip = card.querySelector('.order-grip');
+    grip.addEventListener('mousedown', () => { card.draggable = true; });
+    grip.addEventListener('mouseup',   () => { card.draggable = false; });
+
+    card.addEventListener('dragstart', e => {
+      dragId = Number(card.dataset.contestId);
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', String(dragId));
+      card.classList.add('dragging');
+    });
+    card.addEventListener('dragend', () => {
+      card.draggable = false;
+      card.classList.remove('dragging');
+      clearDropMarkers();
+      dragId = null;
+    });
+    card.addEventListener('dragover', e => {
+      if (dragId === null || dragId === Number(card.dataset.contestId)) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      const after = isAfterMidpoint(card, e);
+      clearDropMarkers();
+      card.classList.add(after ? 'drop-after' : 'drop-before');
+    });
+    card.addEventListener('drop', e => {
+      e.preventDefault();
+      const targetId = Number(card.dataset.contestId);
+      if (dragId === null || dragId === targetId) return;
+      const after = isAfterMidpoint(card, e);
+      const order = [...state.visibleRaces].filter(id => id !== dragId);
+      const newIndex = order.indexOf(targetId) + (after ? 1 : 0);
+      clearDropMarkers();
+      moveRace(dragId, newIndex);
+    });
+  }
+
+  function isAfterMidpoint(card, e) {
+    const rect = card.getBoundingClientRect();
+    return e.clientY > rect.top + rect.height / 2;
+  }
+
+  function clearDropMarkers() {
+    document.querySelectorAll('.drop-before, .drop-after')
+      .forEach(el => el.classList.remove('drop-before', 'drop-after'));
   }
 
   // ---- Build race card ----
@@ -1139,11 +1265,22 @@
 
     const hdr = document.createElement('div');
     hdr.className = 'race-card-header';
-    hdr.innerHTML = `<span class="race-name">${nameStr}</span><div style="display:flex;align-items:center;gap:10px"><button class="race-copy-link" onclick="copyRaceLink(${race.contest_id},this)" title="Copy a link to this race">link</button><span class="race-meta">${metaStr}</span></div>`;
+    const cid = race.contest_id;
+    hdr.innerHTML = `<div class="race-title">
+        <div class="race-order">
+          <span class="order-grip" title="Drag to reorder">⠿</span>
+          <input type="number" class="order-num" min="1" title="Display position"
+                 onchange="onOrderInput(${cid},this)" onkeydown="if(event.key==='Enter')this.blur()" />
+          <button class="order-btn order-up" onclick="moveRaceBy(${cid},-1)" title="Move up" aria-label="Move up">▲</button>
+          <button class="order-btn order-down" onclick="moveRaceBy(${cid},1)" title="Move down" aria-label="Move down">▼</button>
+        </div>
+        <span class="race-name">${nameStr}</span>
+      </div><div style="display:flex;align-items:center;gap:10px"><button class="race-copy-link" onclick="copyRaceLink(${cid},this)" title="Copy a link to this race">link</button><span class="race-meta">${metaStr}</span></div>`;
     card.appendChild(hdr);
+    setupCardDrag(card);
 
     if (!drops.length) {
-      card.innerHTML += '<div class="loading-msg">No results yet.</div>';
+      card.insertAdjacentHTML('beforeend', '<div class="loading-msg">No results yet.</div>');
       return card;
     }
 
@@ -1169,7 +1306,7 @@
     }
 
     if (!candidates.length && !otherCandidates.length) {
-      card.innerHTML += '<div class="empty-msg">No candidates match current filters.</div>';
+      card.insertAdjacentHTML('beforeend', '<div class="empty-msg">No candidates match current filters.</div>');
       return card;
     }
 
