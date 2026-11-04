@@ -25,6 +25,8 @@
       --lib:      #f5c043;
       --npd:      #b495ff;
       --other:    #8a929a;
+      --yes:      #4ade80;
+      --no:       #f87171;
       --col-name: 200px;
       --col-drop: 170px;
       --sidebar-w: 260px;
@@ -49,6 +51,8 @@
       --lib:      #b07a00;
       --npd:      #6d44d9;
       --other:    #555c58;
+      --yes:      #15803d;
+      --no:       #b91c1c;
     }
 
     body {
@@ -418,6 +422,8 @@
     .party-Rep  { background: rgba(244,114,90,0.15);  color: var(--rep); }
     .party-Lib  { background: rgba(240,180,41,0.15);  color: var(--lib); }
     .party-NPP  { background: rgba(167,139,250,0.15); color: var(--npd); }
+    .choice-YES { background: color-mix(in srgb, var(--yes) 15%, transparent); color: var(--yes); }
+    .choice-NO  { background: color-mix(in srgb, var(--no) 15%, transparent);  color: var(--no); }
     .party-other{ background: rgba(107,114,128,0.15); color: var(--other); }
 
     .hide-btn {
@@ -513,7 +519,7 @@
 
   // BUILD_VERSION is replaced by build_static.py to bust browser caches
   // on every new build. Empty string in dev mode.
-  const BUILD_VERSION = "20261104-081609";
+  const BUILD_VERSION = "20261104-095801";
 
   // ---------------------------------------------------------------------------
   // Theme: persists in localStorage, defaults to dark.
@@ -559,6 +565,12 @@
   };
 
   const PARTY_COLORS = { Dem:'#5b9cf6', Rep:'#f4725a', Lib:'#f0b429', NPP:'#a78bfa', 'P&F':'#fb923c' };
+  // YES/NO rows in measure / retention contests get their own colors
+  function choiceOf(contest, c) {
+    if (!contest || contest.contest_type !== 'measure') return null;
+    const n = (c.name || '').toUpperCase();
+    return n === 'YES' || n === 'NO' ? n : null;
+  }
   function partyColor(p) { return PARTY_COLORS[p] || '#6b7280'; }
   function partyClass(p) {
     if (p==='Dem') return 'party-Dem';
@@ -1364,7 +1376,9 @@
       // Name cell
       row.appendChild(makeCell(['cell-name'],
         `<span class="cand-name-text" title="${c.name}">${c.name}</span>
-         <span class="cand-party-badge ${partyClass(c.party)}">${c.party}</span>
+         ${choiceOf(data.contest, c)
+            ? `<span class="cand-party-badge choice-${choiceOf(data.contest, c)}">${choiceOf(data.contest, c)}</span>`
+            : `<span class="cand-party-badge ${partyClass(c.party)}">${c.party}</span>`}
          <button class="hide-btn" onclick="toggleCandidate('${key}',this)">${isHidden?'show':'hide'}</button>`
       ));
 
@@ -1377,7 +1391,8 @@
         if (!dc) {
           inner = `<span class="pct-big">—</span>`;
         } else {
-          const color  = partyColor(c.party);
+          const choice = choiceOf(data.contest, c);
+          const color  = choice ? `var(--${choice.toLowerCase()})` : partyColor(c.party);
           const pctW   = Math.min(dc.vote_pct, 100).toFixed(1);
 
           // Delta sits inline next to the percent
